@@ -1,0 +1,225 @@
+﻿{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "subscriptionId": {
+      "type": "string"
+    },
+    "resourceGroup": {
+      "type": "string"
+    },
+    "vNetName": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "dataFactoryName": {
+      "type": "string"
+    },
+    "adfPEName": {
+      "type": "string"
+    },
+    "adfNicName": {
+      "type": "string"
+    },
+    "synapseName": {
+      "type": "string"
+
+    },
+    "synapsePEName": {
+      "type": "string"
+    },
+    "adlsName": {
+      "type": "string"
+
+    },
+    "adlsPEName": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "object"
+    },
+    "dnsZoneSubscriptionId": {
+      "type": "string"
+    },
+    "dnsZoneResourceGroup": {
+      "type": "string"
+    }
+
+  },
+  "variables": {
+    "adfExternalId": "[concat('/subscriptions/', parameters('subscriptionId'),'/resourceGroups/', parameters('resourceGroup'),'/providers/Microsoft.DataFactory/factories/', parameters('dataFactoryName') )]",
+    "adfIpconfigName": "[concat('ip',parameters('adfPEName'))]",
+    "synapseExternalId": "[concat('/subscriptions/', parameters('subscriptionId'),'/resourceGroups/', parameters('resourceGroup'),'/providers/Microsoft.Synapse/workspaces/', parameters('synapseName') )]",
+    "virtualNetworkExternalId": "[concat('/subscriptions/', parameters('subscriptionId'),'/resourceGroups/Networking/providers/Microsoft.Network/virtualNetworks/', parameters('vNetName'))]",
+    "dnsZoneId": "[concat('/subscriptions/', parameters('dnsZoneSubscriptionId'),'/resourceGroups/', parameters('dnsZoneResourceGroup'),'/providers/Microsoft.Network/privateDnsZones/privatelink.datafactory.azure.net')]",
+    "synapseDnsZoneId": "[concat('/subscriptions/', parameters('dnsZoneSubscriptionId'),'/resourceGroups/', parameters('dnsZoneResourceGroup'),'/providers/Microsoft.Network/privateDnsZones/privatelink.sql.azuresynapse.net')]",
+    "adlsDnsZoneId": "[concat('/subscriptions/', parameters('dnsZoneSubscriptionId'),'/resourceGroups/', parameters('dnsZoneResourceGroup'),'/providers/Microsoft.Network/privateDnsZones/privatelink.blob.core.windows.net')]"
+
+
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Network/privateEndpoints",
+      "apiVersion": "2020-06-01",
+      "name": "[parameters('adfPEName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "dependsOn": [
+      ],
+      "properties": {
+        "privateLinkServiceConnections": [
+          {
+            "name": "[parameters('adfPEName')]",
+            "properties": {
+              "privateLinkServiceId": "[variables('adfExternalId')]",
+              "groupIds": [
+                "dataFactory"
+              ]
+            }
+          }
+        ],
+        "subnet": {
+          "id": "[concat(variables('virtualNetworkExternalId'), '/subnets/default')]"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "apiVersion": "2020-11-01",
+      "name": "[parameters('adfNicName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "[variables('adfIpconfigName')]",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[concat(variables('virtualNetworkExternalId'), '/subnets/default')]"
+              },
+              "primary": true,
+              "privateIPAddressVersion": "IPv4"
+            }
+          }
+        ],
+        "dnsSettings": {
+          "dnsServers": []
+        },
+        "enableAcceleratedNetworking": false,
+        "enableIPForwarding": false
+      }
+    },
+    {
+      "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+      "apiVersion": "2020-11-01",
+      "name": "[concat(parameters('adfPEName'), '/default')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/privateEndpoints', parameters('adfPEName'))]"
+      ],
+      "properties": {
+        "privateDnsZoneConfigs": [
+          {
+            "name": "privatelink-datafactory-azure-net",
+            "properties": {
+              "privateDnsZoneId": "[variables('dnsZoneId')]"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/privateEndpoints",
+      "apiVersion": "2020-06-01",
+      "name": "[parameters('synapsePEName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "dependsOn": [
+      ],
+      "properties": {
+        "privateLinkServiceConnections": [
+          {
+            "name": "[parameters('synapsePEName')]",
+            "properties": {
+              "privateLinkServiceId": "[variables('synapseExternalId')]",
+              "groupIds": [
+                "dataFactory"
+              ]
+            }
+          }
+        ],
+        "subnet": {
+          "id": "[concat(variables('virtualNetworkExternalId'), '/subnets/default')]"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+      "apiVersion": "2020-11-01",
+      "name": "[concat(parameters('synapsePEName'), '/default')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/privateEndpoints', parameters('synapsePEName'))]"
+      ],
+      "properties": {
+        "privateDnsZoneConfigs": [
+          {
+            "name": "privatelink-sql-azuresynapse-azure-net",
+            "properties": {
+              "privateDnsZoneId": "[variables('synapseDnsZoneId')]"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2019-11-01",
+      "name": "[parameters('adlsPEName')]",
+      "type": "Microsoft.Network/privateEndpoints",
+      "location": "eastus",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('adlsName'))]"
+      ],
+      "properties": {
+        "privateLinkServiceConnections": [
+          {
+            "id": "[concat(resourceGroup().id, '/providers/Microsoft.Network/privateEndpoints/privateLinkServiceConnections/', parameters('privateLinkConnection_name'))]",
+            "name": "[parameters('privateLinkConnection_name')]",
+            "properties": {
+              "privateLinkServiceId": "[resourceId('Microsoft.Storage/storageAccounts', parameters('adlsName'))]",
+              "groupIds": [
+                "blob"
+              ]
+            }
+          }
+        ],
+        "subnet": {
+          "id": "[concat('/subscriptions/', parameters('subscriptionId'),'/resourcegroups/', parameters('vnetRgName'),'/providers/Microsoft.Network/virtualNetworks/', parameters('virtualNetwork_name'),'/subnets/', parameters('subnet_pe_name'))]"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+      "apiVersion": "2020-03-01",
+      "name": "[concat(parameters('adlsPEName'),'/dnsgroupname')]",
+      "location": "eastus",
+      "dependsOn": [
+
+        "[resourceId('Microsoft.Network/privateEndpoints' , parameters('adlsPEName'))]"
+      ],
+      "properties": {
+        "privateDnsZoneConfigs": [
+          {
+            "name": "config1",
+            "properties": {
+               "privateDnsZoneId": "[variables('adlsDnsZoneId')]"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "location": {
+            "value": "eastus"
+        },
+        "allowAllConnections": {
+            "value": "true"
+        },
+        "sku": {
+            "value": "DW100c"
+        },
+        "sqlAdministratorLogin": {
+            "value": "dsAdmin"
+        },                
+        "synapseContainer": {
+            "value": "ds-synapse"
+        },        
+        "sqlPoolName": {
+            "value": "synwssqlpool"
+        },
+        "resourceTags": {
+            "value": {
+                "CostCenter": "8604",
+                "PepsiCo IT Project Number": "ICIFI058"
+            }
+        }
+    }
+}

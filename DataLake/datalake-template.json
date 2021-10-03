@@ -1,0 +1,78 @@
+﻿{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "storageAccounts_datalake_name": {
+      "defaultValue": "datalaketestmg",
+      "type": "String"
+    },
+    "deployment_location": {
+      "defaultValue": "eastus",
+      "type": "String"
+    },
+    "resourcetags":{
+      "type": "object"
+    },
+    "sku": {
+      "type": "string"
+    },
+    "tier": {
+      "type": "string"
+    }
+  },
+  "variables": {},
+  "resources": [
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2019-06-01",
+      "name": "[parameters('storageAccounts_datalake_name')]",
+      "location": "[parameters('deployment_location')]",      
+      "sku": {
+        "name": "[parameters('sku')]",
+        "tier": "[parameters('tier')]"
+      },
+      "tags": "[parameters('resourcetags')]",
+      "kind": "StorageV2",
+      "properties": {
+        "minimumTlsVersion": "TLS1_2",
+        "allowBlobPublicAccess": true,
+        "isHnsEnabled": true,
+        "networkAcls": {
+          "bypass": "AzureServices",
+          "virtualNetworkRules": [],
+          "ipRules": [],
+          "defaultAction": "Allow"
+        },
+        "supportsHttpsTrafficOnly": true,
+        "encryption": {
+          "services": {
+            "file": {
+              "keyType": "Account",
+              "enabled": true
+            },
+            "blob": {
+              "keyType": "Account",
+              "enabled": true
+            }
+          },
+          "keySource": "Microsoft.Storage"
+        },
+        "accessTier": "Hot"
+      }
+    }
+  ],
+  "outputs": {
+    "ConnString": {
+      "value": "[Concat('DefaultEndpointsProtocol=https;AccountName=',parameters('storageAccounts_datalake_name'),';AccountKey=',listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_datalake_name')), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value)]",
+      "type": "string"
+    },
+    "AccountKey": {
+      "value": "[Concat(listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_datalake_name')), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value)]",
+      "type": "string"
+    },
+    "Url": {
+      "value": "[Concat('https://',parameters('storageAccounts_datalake_name'),'.dfs.core.windows.net')]",
+      "type": "string"
+    }
+  }
+}

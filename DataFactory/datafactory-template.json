@@ -1,0 +1,145 @@
+﻿{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "name": {
+      "type": "string"
+    },
+    "version": {
+      "defaultValue": "V2",
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "vNetEnabled": {
+      "type": "bool"
+    },
+    "publicNetworkAccess": {
+      "type": "bool"
+    },
+    "gitConfigureLater": {
+      "type": "bool"
+    },
+    "gitRepoType": {
+      "type": "string"
+    },
+    "gitAccountName": {
+      "defaultValue": "",
+      "type": "string"
+    },
+    "gitProjectName": {
+      "defaultValue": "",
+      "type": "string"
+    },
+    "gitRepositoryName": {
+      "defaultValue": "",
+      "type": "string"
+    },
+    "gitCollaborationBranch": {
+      "defaultValue": "",
+      "type": "string"
+    },
+    "gitRootFolder": {
+      "defaultValue": "/",
+      "type": "string"
+    },
+    "resourcetags": {
+      "type": "object"
+    },
+    "dataLakeName": {
+      "type": "string"
+    },
+    "linkedIR": {
+      "type": "bool",
+      "defaultValue":false
+    }
+  },
+  "resources": [
+    {
+      "condition": "[equals(parameters('version'), 'V2')]",
+      "type": "Microsoft.DataFactory/factories",
+      "apiVersion": "2018-06-01",
+      "name": "[parameters('name')]",
+      "location": "[parameters('location')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "tags": "[parameters('resourcetags')]",
+      "properties": {
+        "repoConfiguration": "[if(bool(parameters('gitConfigureLater')), json('null'), json(concat('{\"type\": \"', parameters('gitRepoType'), '\",','\"accountName\": \"', parameters('gitAccountName'), '\",','\"repositoryName\": \"', parameters('gitRepositoryName'), '\",', if(equals(parameters('gitRepoType'), 'FactoryVSTSConfiguration'), concat('\"projectName\": \"', parameters('gitProjectName'), '\",'), ''),'\"collaborationBranch\": \"', parameters('gitCollaborationBranch'), '\",','\"rootFolder\": \"', parameters('gitRootFolder'), '\"}')))]",
+        "publicNetworkAccess": "[if(bool(parameters('publicNetworkAccess')), 'Enabled', 'Disabled')]"
+      },
+      "resources": [
+        {
+          "condition": "[and(equals(parameters('version'), 'V2'), parameters('vNetEnabled'))]",
+          "name": "[concat(parameters('name'), '/default')]",
+          "type": "Microsoft.DataFactory/factories/managedVirtualNetworks",
+          "apiVersion": "2018-06-01",
+          "properties": {},
+          "dependsOn": [
+            "[concat('Microsoft.DataFactory/factories/', parameters('name'))]"
+          ]
+        },
+        {
+          // "condition": "[and(equals(parameters('linkedIR'),false()),equals(parameters('version'), 'V2'), parameters('vNetEnabled'))]",
+          "name": "SelfHostedIR",
+          "type": "integrationRuntimes",
+          "apiVersion": "2018-06-01",
+          "properties": {
+            "type": "SelfHosted"
+          },
+          "dependsOn": [
+            "[concat('Microsoft.DataFactory/factories/', parameters('name'))]",
+            "[concat('Microsoft.DataFactory/factories/', parameters('name'), '/managedVirtualNetworks/default')]"
+          ]
+        },
+        {
+          // "condition": "[and(equals(parameters('version'), 'V2'), parameters('vNetEnabled'))]",
+          "condition": "[and(parameters('linkedIR'), equals(parameters('version'), 'V2'), parameters('vNetEnabled'))]",
+          "name": "[concat(parameters('name'), '/AutoResolveIntegrationRuntime')]",
+          "type": "Microsoft.DataFactory/factories/integrationRuntimes",
+          "apiVersion": "2018-06-01",
+          "properties": {
+            "type": "Managed",
+            "managedVirtualNetwork": {
+              "referenceName": "default",
+              "type": "ManagedVirtualNetworkReference"
+            },
+            "typeProperties": {
+              "computeProperties": {
+                "location": "AutoResolve"
+              }
+            }
+          },
+          "dependsOn": [
+            "[concat('Microsoft.DataFactory/factories/', parameters('name'))]",
+            "[concat('Microsoft.DataFactory/factories/', parameters('name'), '/managedVirtualNetworks/default')]"
+          ]
+        }
+      ]
+    },
+    // Assign contributor role to ADF in Data Lake
+    {
+      "scope": "[concat('Microsoft.Storage/storageAccounts/', parameters('dataLakeName'))]",
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2020-04-01-preview",
+      "name": "[guid(uniqueString(resourceGroup().id, parameters('name'), parameters('dataLakeName')))]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.DataFactory/factories/', parameters('name'))]"
+      ],
+      "properties": {
+        "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', 'b24988ac-6180-42a0-ab88-20f7382dd24c')]",
+        "principalId": "[reference(resourceId('Microsoft.DataFactory/factories', parameters('name')), '2018-06-01', 'Full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      }
+    }
+  ],
+  "outputs": {
+    "dataFactoryManagedIdentityObjectId": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.DataFactory/factories', parameters('name')), '2018-06-01', 'Full').identity.principalId]"
+    }
+  }
+}

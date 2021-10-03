@@ -1,0 +1,47 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "version": {
+            "value": "V2"
+        },
+        "vNetEnabled": {
+            "value": false
+        },
+        "publicNetworkAccess": {
+            "value": true
+        },
+        "gitConfigureLater": {
+            "value": true
+        },
+        "gitAccountName": {
+            "value": ""
+        },
+        "gitProjectName": {
+            "value": ""
+        },
+        "gitRepositoryName": {
+            "value": ""
+        },
+        "gitCollaborationBranch": {
+            "value": "master"
+        },
+        "gitRootFolder": {
+            "value": "/"
+        },
+        "gitRepoType": {
+            "value": "FactoryVSTSConfiguration"
+        },
+        "resourceTags": {
+            "value": {
+                "CostCenter": "8604",
+                "PepsiCo IT Project Number": "ICIFI058",
+                "Application": "pepsico",
+                "Environment": "SB"
+            }
+        },
+        "linkedIR": {
+            "value": false
+        }
+    }
+}

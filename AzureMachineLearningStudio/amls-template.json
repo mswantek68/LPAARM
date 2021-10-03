@@ -1,0 +1,112 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "name": {
+      "type": "String",
+      "metadata": {
+        "description": "Specifies the name of the Azure Machine Learning workspace."
+      }
+    },
+    "location": {
+      "defaultValue": "eastus",
+      "type": "String",
+      "metadata": {
+        "description": "Specifies the location for all resources."
+      }
+    },
+    "resourcetags": {
+      "type": "object"
+    },
+    "storageAccountName": {
+      "type": "String",
+      "metadata": {
+        "description": "Name of the storage account."
+      }
+    },
+    "storageAccountType": {
+      "defaultValue": "Standard_LRS",
+      "allowedValues": [
+        "Standard_LRS",
+        "Standard_GRS",
+        "Standard_RAGRS",
+        "Standard_ZRS",
+        "Standard_GZRS",
+        "Standard_RAGZRS"
+      ],
+      "type": "String"
+    },
+    "applicationInsightsName": {
+      "type": "String",
+      "metadata": {
+        "description": "Name of ApplicationInsights."
+      }
+    },
+    "keyVaultName": {
+      "type": "String",
+      "metadata": {
+        "description": "Name of the key vault."
+      }
+    }
+  },
+  "variables": {
+    "storageAccount": "[resourceId(resourceGroup().name, 'Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]",
+    "keyVault": "[resourceId(resourceGroup().name, 'Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+    "applicationInsights": "[resourceId(resourceGroup().name, 'Microsoft.Insights/components', parameters('applicationInsightsName'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2019-06-01",
+      "name": "[parameters('storageAccountName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('resourcetags')]",
+      "sku": {
+        "name": "[parameters('storageAccountType')]"
+      },
+      "kind": "StorageV2",
+      "properties": {
+        "encryption": {
+          "services": {
+            "blob": {
+              "enabled": true
+            },
+            "file": {
+              "enabled": true
+            }
+          },
+          "keySource": "Microsoft.Storage"
+        },
+        "supportsHttpsTrafficOnly": true
+      }
+    },
+    {
+      "type": "Microsoft.Insights/components",
+      "apiVersion": "2018-05-01-preview",
+      "name": "[parameters('applicationInsightsName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('resourcetags')]",
+      "kind": "web",
+      "properties": {
+        "Application_Type": "web"
+      }
+    },
+    {
+      "type": "Microsoft.MachineLearningServices/workspaces",
+      "apiVersion": "2020-06-01",
+      "name": "[parameters('name')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('resourcetags')]",
+      "identity": {
+        "type": "systemAssigned"
+      },
+      "properties": {
+        "friendlyName": "[parameters('name')]",
+        "storageAccount": "[variables('storageAccount')]",
+        "keyVault": "[variables('keyVault')]",
+        "applicationInsights": "[variables('applicationInsights')]"
+        //"containerRegistry": "[variables('containerRegistry')]"
+      }
+    }
+  ]
+}

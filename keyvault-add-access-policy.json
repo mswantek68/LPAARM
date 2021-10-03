@@ -1,0 +1,63 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "KeyVaultName": {
+            "type": "string"
+        },
+        "KeyVaultResourceGroupName": {
+            "type": "string"
+        },
+        "KeyVaultSubscriptionId": {
+            "type": "string",
+            "defaultValue": "[subscription().subscriptionId]"
+        },
+        "managedIdentityObjectId": {
+            "type": "string"
+        },
+        "resourceTenantId": {
+            "type": "string",
+            "defaultValue": "[subscription().tenantId]"
+        }
+    },    
+    "resources": [
+        
+        {
+            "name": "grant-access",
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2019-10-01",
+            "subscriptionId": "[parameters('KeyVaultSubscriptionId')]",
+            "resourceGroup": "[parameters('KeyVaultResourceGroupName')]",            
+            "properties": {
+                "mode": "Incremental",
+                "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                    "contentVersion": "1.0.0.0",
+                    "resources": [
+                        {
+                            "type": "Microsoft.KeyVault/vaults/accessPolicies",
+                            "name": "[concat(parameters('KeyVaultName'), '/add')]",
+                            "apiVersion": "2019-09-01",
+                            "properties": {
+                                "accessPolicies": [
+                                    {
+                                        "tenantId": "[parameters('resourceTenantId')]",
+                                        "objectId": "[parameters('managedIdentityObjectId')]",
+                                        "permissions": {
+                                            "secrets": [
+                                                "get",
+                                                "list"
+                                            ]
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    ]
+}
+
+
